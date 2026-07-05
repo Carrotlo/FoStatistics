@@ -1,0 +1,25 @@
+# Need help or want support? Join the Discord: https://discord.gg/kEF77QCfu7
+
+# Maximum value any statistic may be set or added to. Minecraft statistics are integer values.
+statistics:
+  max-statistic-amount: 2147483647
+
+  # Allows editing known players who are offline. Uses Bukkit's OfflinePlayer statistics API.
+  allow-offline-player-edits: true
+
+  # Allows Bukkit to create/use an offline player profile when no known player match exists.
+  # Default false prevents typo-created player data.
+  allow-unknown-offline-targets: false
+
+# Uses Minecraft's native dialog/input screens for search and text/number input when supported.
+# Requires a compatible Paper or Paper-fork server with the Dialog API.
+# Spigot and older versions automatically fall back to inventory/chat GUI mode.
+# Set this to false to always use inventory/chat GUIs.
+native-dialogs:
+  enabled: true
+
+  # Sends admins a short warning when native dialogs are enabled but unavailable and the plugin falls back.
+  warn-on-fallback: true
+
+# File logging works like debug mode and saves plugin activity to logs/latest.log. Default: false
+file-logging: false

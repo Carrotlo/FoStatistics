@@ -1,0 +1,43 @@
+tokens:
+  prefix: "{theme}FoStatistics &8» {muted}"
+  theme: "#03fc88"
+  muted: "#a7b8b0"
+  white: "#ffffff"
+  good: "#3ecf8e"
+  bad: "#ff5d73"
+
+no-permission: "{prefix}{bad}No permission."
+player-only: "{prefix}{bad}Player only."
+unknown-command: "{prefix}{bad}Unknown command. {muted}Use {theme}/{label} help{muted}."
+
+help:
+  - "{prefix}{theme}FoStatistics Admin"
+  - "{prefix}{muted}/{label} setstatistic <statistic> <player> <amount>"
+  - "{prefix}{muted}/{label} addstatistic <statistic> <player> <amount>"
+  - "{prefix}{muted}/{label} takestatistic <statistic> <player> <amount>"
+  - "{prefix}{muted}/{label} view <statistic> <player>"
+  - "{prefix}{muted}/{label} editor"
+  - "{prefix}{muted}/{label} reload"
+  - "{prefix}{muted}/{label} version"
+  - "{prefix}{muted}Typed stats: {theme}mine_block:stone{muted}, {theme}kill_entity:zombie{muted}."
+  - "{prefix}{muted}Time stat: {theme}time_played{muted}. Use seconds or {theme}s/m/h/d/w{muted}."
+
+reload-success: "{prefix}{good}Reloaded config, messages, editor, and logging."
+reload-failed: "{prefix}{bad}Reload failed. {muted}{error}"
+native-dialog-fallback: "{prefix}{bad}Native dialogs unavailable. {muted}Using chat input. {reason}"
+
+statistic-usage: "{prefix}{bad}Usage: {muted}/{label} {action} <statistic> <player> <amount>"
+statistic-view-usage: "{prefix}{bad}Usage: {muted}/{label} view <statistic> <player>"
+invalid-statistic: "{prefix}{bad}Invalid statistic. {muted}{reason}"
+invalid-amount: "{prefix}{bad}Amount must be a whole number 0 or higher. {muted}For time_played use s/m/h/d/w or seconds."
+amount-too-large: "{prefix}{bad}Amount too large. {muted}Max: {theme}{max}{muted}."
+unknown-player: "{prefix}{bad}Unknown player: {theme}{player}{muted}."
+statistic-api-error: "{prefix}{bad}Statistic edit failed. {muted}{error}"
+statistic-view: "{prefix}{theme}{player}{muted}'s {theme}{statistic}{muted}: {theme}{value}{muted}."
+statistic-set: "{prefix}{good}Set {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
+statistic-added: "{prefix}{good}Added {theme}{amount}{muted} to {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
+statistic-taken: "{prefix}{good}Took {theme}{amount}{muted} from {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
+
+editor-setting-saved: "{prefix}{good}Saved {theme}{setting}{muted}: {theme}{value}{muted}."
+editor-setting-failed: "{prefix}{bad}Could not save {theme}{setting}{muted}."
+editor-prompt-cancelled: "{prefix}{muted}Prompt cancelled."

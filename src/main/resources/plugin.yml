@@ -1,0 +1,20 @@
+name: FoStatistics
+description: Edit player Minecraft statistics safely through the server API.
+version: '${version}'
+
+main: me.foesio.foStatistics.FoStatistics
+api-version: '1.21'
+
+authors: [ Carrotio ]
+
+commands:
+  fostatisticsadmin:
+    description: FoStatistics admin command.
+    usage: /fostatisticsadmin help
+    aliases: [ statisticsadmin ]
+    permission: fostatistics.admin
+
+permissions:
+  fostatistics.admin:
+    description: Allows FoStatistics admin commands.
+    default: op
