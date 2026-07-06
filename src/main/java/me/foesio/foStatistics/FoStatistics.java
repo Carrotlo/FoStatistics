@@ -26,6 +26,7 @@ import java.util.logging.Level;
 public final class FoStatistics extends JavaPlugin {
     public static final String ADMIN_PERMISSION = "fostatistics.admin";
     private static final String MODRINTH_PROJECT_ID = "fostatistics";
+    private static final int BSTATS_PLUGIN_ID = 32419;
 
     private PluginSettings settings;
     private FoMessageService messages;
@@ -42,6 +43,7 @@ public final class FoStatistics extends JavaPlugin {
         reloadConfig();
         this.settings = PluginSettings.from(getConfig());
         reloadCoreContext();
+        core.metrics(BSTATS_PLUGIN_ID);
         this.messages = FoMessageService.load(this);
         ensurePluginMessageDefaults();
 
