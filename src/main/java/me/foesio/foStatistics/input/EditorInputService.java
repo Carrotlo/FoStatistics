@@ -31,11 +31,11 @@ public final class EditorInputService {
 
     public void openNumberInput(Player player, String currentValue, Consumer<String> onSubmit, Runnable onCancel) {
         TextDialogRequest request = editorNumberRequest(currentValue);
-        NativeDialogSupport support = inputSupport();
+        NativeDialogSupport support = plugin.core().nativeDialogs();
         if (!support.canUseNativeDialogs()) {
             warnFallback(player, support);
         }
-        EditorDialogInputs.openTextFromInventory(
+        plugin.core().scheduler().runLaterForPlayer(player, () -> EditorDialogInputs.openTextFromInventory(
                 plugin,
                 plugin.core().inventoryCloseSuppressor(),
                 plugin.core().dialogService(),
@@ -43,7 +43,7 @@ public final class EditorInputService {
                 request,
                 onSubmit,
                 onCancel
-        );
+        ), 1L);
     }
 
     private TextDialogRequest editorNumberRequest(String currentValue) {
@@ -68,7 +68,4 @@ public final class EditorInputService {
         return plugin.messages().renderTemplate(template, Map.of());
     }
 
-    private NativeDialogSupport inputSupport() {
-        return plugin.core().dialogInputs().support();
-    }
 }

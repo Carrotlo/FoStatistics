@@ -1,11 +1,15 @@
 package me.foesio.foStatistics.command;
 
+import me.foesio.core.command.FoAdminCommand;
+import me.foesio.core.command.FoAdminCommandContext;
+import me.foesio.core.command.FoAdminMessages;
+import me.foesio.core.command.FoAdminSubcommand;
 import me.foesio.core.material.MaterialTypes;
 import me.foesio.core.mob.MobTypes;
 import me.foesio.core.number.DurationParser;
 import me.foesio.core.number.LargeNumberParser;
 import me.foesio.core.number.TickDuration;
-import me.foesio.core.reload.FoReloadResult;
+import me.foesio.core.reload.FoReloadRegistry;
 import me.foesio.foStatistics.FoStatistics;
 import me.foesio.foStatistics.statistic.StatisticKey;
 import me.foesio.foStatistics.statistic.StatisticParseException;
@@ -13,9 +17,7 @@ import me.foesio.foStatistics.statistic.StatisticParser;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 
 import java.math.BigDecimal;
@@ -24,20 +26,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public final class AdminCommand implements TabExecutor {
+public final class AdminCommand {
     private static final int SUGGESTION_LIMIT = 80;
     private static final int TYPED_TARGET_SUGGESTION_LIMIT = 50;
-
-    private static final List<String> ROOT_ARGUMENTS = List.of(
-            "help",
-            "version",
-            "reload",
-            "editor",
-            "view",
-            "setstatistic",
-            "addstatistic",
-            "takestatistic"
-    );
 
     private final FoStatistics plugin;
     private final StatisticParser statisticParser = new StatisticParser();
@@ -46,117 +37,116 @@ public final class AdminCommand implements TabExecutor {
         this.plugin = plugin;
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission(FoStatistics.ADMIN_PERMISSION)) {
-            plugin.messages().send(sender, "no-permission");
-            return true;
-        }
+    public boolean register(FoReloadRegistry reloadRegistry) {
+        FoAdminMessages adminMessages = FoAdminMessages.builder()
+                .generalNoPermission("no-permission", "{prefix}{bad}No permission.")
+                .generalPlayerOnly("player-only", "{prefix}{bad}Player only.")
+                .usage("unknown-command", "{prefix}{bad}Unknown command. {muted}Use {theme}/{label} help{muted}.")
+                .reloadSuccess("reload-success", "{prefix}{good}Reloaded config, messages, editor, and logging.")
+                .reloadFailed("reload-failed", "{prefix}{bad}Reload failed. {muted}{error}")
+                .build();
 
-        if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            plugin.messages().send(sender, "help", Map.of("label", label));
-            return true;
-        }
+        return FoAdminCommand.builder(plugin, plugin.messages())
+                .commandName("fostatisticsadmin")
+                .permission(FoStatistics.ADMIN_PERMISSION)
+                .reloads(reloadRegistry)
+                .updates(plugin.updateNotices())
+                .adminMessages(adminMessages)
+                .defaultExecutor(this::sendHelp)
+                .addSubcommand(helpSubcommand())
+                .addSubcommand(editorSubcommand())
+                .addSubcommand(viewSubcommand())
+                .addSubcommand(editSubcommand("set", EditAction.SET, "setstatistic"))
+                .addSubcommand(editSubcommand("add", EditAction.ADD, "addstatistic"))
+                .addSubcommand(editSubcommand("take", EditAction.TAKE, "takestatistic"))
+                .build()
+                .register();
+    }
 
-        String subCommand = args[0].toLowerCase(Locale.ROOT);
-        switch (subCommand) {
-            case "version" -> sendVersion(sender);
-            case "reload" -> reload(sender);
-            case "editor" -> openEditor(sender);
-            case "view", "viewstatistic" -> viewStatistic(sender, label, args);
-            case "set", "setstatistic" -> editStatistic(sender, label, args, EditAction.SET);
-            case "add", "addstatistic" -> editStatistic(sender, label, args, EditAction.ADD);
-            case "take", "takestatistic" -> editStatistic(sender, label, args, EditAction.TAKE);
-            default -> plugin.messages().send(sender, "unknown-command", Map.of("label", label));
-        }
+    private FoAdminSubcommand helpSubcommand() {
+        return FoAdminSubcommand.builder("help", this::sendHelp)
+                .usage("help")
+                .build();
+    }
+
+    private boolean sendHelp(FoAdminCommandContext context) {
+        plugin.messages().sendList(context.sender(), "help", Map.of("label", context.label()));
         return true;
     }
 
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (!sender.hasPermission(FoStatistics.ADMIN_PERMISSION)) {
-            return List.of();
-        }
-
-        if (args.length == 1) {
-            return filter(ROOT_ARGUMENTS, args[0]);
-        }
-
-        if (!isEditAction(args[0]) && !isViewAction(args[0])) {
-            return List.of();
-        }
-
-        if (args.length == 2) {
-            return statisticSuggestions(args[1]);
-        }
-        if (args.length == 3) {
-            return playerSuggestions(args[2]);
-        }
-        if (args.length == 4 && isEditAction(args[0])) {
-            try {
-                StatisticKey statisticKey = statisticParser.parse(args[1]);
-                if (statisticKey.isTimePlayed()) {
-                    return filter(List.of("1s", "30s", "1m", "10m", "1h", "1d", "1w"), args[3]);
-                }
-            } catch (StatisticParseException ignored) {
-            }
-            return filter(List.of("0", "1", "10", "100", "1000"), args[3]);
-        }
-        return List.of();
+    private FoAdminSubcommand editorSubcommand() {
+        return FoAdminSubcommand.builder("editor", context -> {
+                    plugin.editorGui().open(context.playerOrNull());
+                    return true;
+                })
+                .usage("editor")
+                .playerOnly()
+                .build();
     }
 
-    private void sendVersion(CommandSender sender) {
-        plugin.logInfo(sender.getName() + " used version check.");
-        plugin.updateNotices().checkAndSendVersion(sender);
+    private FoAdminSubcommand viewSubcommand() {
+        return FoAdminSubcommand.builder("view", this::viewStatistic)
+                .aliases("viewstatistic")
+                .usage("view <statistic> <player>")
+                .tabCompleter(context -> {
+                    if (context.args().length == 2) {
+                        return statisticSuggestions(context.arg(1));
+                    }
+                    if (context.args().length == 3) {
+                        return playerSuggestions(context.arg(2));
+                    }
+                    return List.of();
+                })
+                .build();
     }
 
-    private void reload(CommandSender sender) {
-        plugin.logInfo(sender.getName() + " started reload.");
-        FoReloadResult result = plugin.reloadPluginFiles();
-        if (result.successful()) {
-            plugin.messages().send(sender, "reload-success");
-            return;
-        }
-
-        plugin.messages().send(sender, "reload-failed", Map.of("error", result.failedStep() + ": " + result.errorMessage()));
-        plugin.logError("Reload failed at " + result.failedStep() + ".", result.error());
+    private FoAdminSubcommand editSubcommand(String name, EditAction action, String alias) {
+        return FoAdminSubcommand.builder(name, context -> editStatistic(context, action))
+                .aliases(alias)
+                .usage(name + " <statistic> <player> <amount>")
+                .tabCompleter(context -> {
+                    if (context.args().length == 2) {
+                        return statisticSuggestions(context.arg(1));
+                    }
+                    if (context.args().length == 3) {
+                        return playerSuggestions(context.arg(2));
+                    }
+                    if (context.args().length == 4) {
+                        return amountSuggestions(context.arg(1), context.arg(3));
+                    }
+                    return List.of();
+                })
+                .build();
     }
 
-    private void openEditor(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
-            plugin.messages().send(sender, "player-only");
-            return;
-        }
-        plugin.editorGui().open(player);
-    }
-
-    private void viewStatistic(CommandSender sender, String label, String[] args) {
+    private boolean viewStatistic(FoAdminCommandContext context) {
+        String[] args = context.args();
         if (args.length != 3) {
-            plugin.messages().send(sender, "statistic-view-usage", Map.of("label", label));
-            return;
+            plugin.messages().send(context.sender(), "statistic-view-usage", Map.of("label", context.label()));
+            return true;
         }
 
         StatisticKey statisticKey;
         try {
             statisticKey = statisticParser.parse(args[1]);
         } catch (StatisticParseException exception) {
-            plugin.messages().send(sender, "invalid-statistic", Map.of("reason", exception.getMessage()));
-            return;
+            plugin.messages().send(context.sender(), "invalid-statistic", Map.of("reason", exception.getMessage()));
+            return true;
         }
 
         OfflinePlayer target = resolveTarget(args[2]);
         if (target == null) {
-            plugin.messages().send(sender, "unknown-player", Map.of("player", args[2]));
-            return;
+            plugin.messages().send(context.sender(), "unknown-player", Map.of("player", args[2]));
+            return true;
         }
 
         int value;
         try {
             value = statisticKey.get(target);
         } catch (IllegalArgumentException exception) {
-            plugin.messages().send(sender, "statistic-api-error", Map.of("error", exception.getMessage()));
+            plugin.messages().send(context.sender(), "statistic-api-error", Map.of("error", exception.getMessage()));
             plugin.logWarning("Statistic API rejected view for " + statisticKey.displayName() + ": " + exception.getMessage());
-            return;
+            return true;
         }
 
         String playerName = target.getName() == null ? target.getUniqueId().toString() : target.getName();
@@ -165,46 +155,48 @@ public final class AdminCommand implements TabExecutor {
                 "player", playerName,
                 "value", formatStatisticValue(statisticKey, value)
         );
-        plugin.messages().send(sender, "statistic-view", placeholders);
-        plugin.logInfo(sender.getName() + " viewed " + playerName + " statistic "
+        plugin.messages().send(context.sender(), "statistic-view", placeholders);
+        plugin.logInfo(context.sender().getName() + " viewed " + playerName + " statistic "
                 + statisticKey.displayName() + ": " + value + ".");
+        return true;
     }
 
-    private void editStatistic(CommandSender sender, String label, String[] args, EditAction action) {
+    private boolean editStatistic(FoAdminCommandContext context, EditAction action) {
+        String[] args = context.args();
         if (args.length != 4) {
-            plugin.messages().send(sender, "statistic-usage", Map.of(
-                    "label", label,
+            plugin.messages().send(context.sender(), "statistic-usage", Map.of(
+                    "label", context.label(),
                     "action", args[0].toLowerCase(Locale.ROOT)
             ));
-            return;
+            return true;
         }
 
         StatisticKey statisticKey;
         try {
             statisticKey = statisticParser.parse(args[1]);
         } catch (StatisticParseException exception) {
-            plugin.messages().send(sender, "invalid-statistic", Map.of("reason", exception.getMessage()));
-            return;
+            plugin.messages().send(context.sender(), "invalid-statistic", Map.of("reason", exception.getMessage()));
+            return true;
         }
 
         OfflinePlayer target = resolveTarget(args[2]);
         if (target == null) {
-            plugin.messages().send(sender, "unknown-player", Map.of("player", args[2]));
-            return;
+            plugin.messages().send(context.sender(), "unknown-player", Map.of("player", args[2]));
+            return true;
         }
 
-        AmountInput amount = parseAmount(args[3], sender, statisticKey);
+        AmountInput amount = parseAmount(args[3], context.sender(), statisticKey);
         if (amount == null) {
-            return;
+            return true;
         }
 
         int maxAmount = plugin.settings().maxStatisticAmount();
         if (amount.value() > maxAmount) {
-            plugin.messages().send(sender, "amount-too-large", Map.of(
+            plugin.messages().send(context.sender(), "amount-too-large", Map.of(
                     "amount", amount.display(),
                     "max", String.valueOf(maxAmount)
             ));
-            return;
+            return true;
         }
 
         int oldValue;
@@ -214,15 +206,15 @@ public final class AdminCommand implements TabExecutor {
             newValue = calculateNewValue(action, oldValue, amount.value(), maxAmount);
             statisticKey.set(target, newValue);
         } catch (ArithmeticException exception) {
-            plugin.messages().send(sender, "amount-too-large", Map.of(
+            plugin.messages().send(context.sender(), "amount-too-large", Map.of(
                     "amount", amount.display(),
                     "max", String.valueOf(maxAmount)
             ));
-            return;
+            return true;
         } catch (IllegalArgumentException exception) {
-            plugin.messages().send(sender, "statistic-api-error", Map.of("error", exception.getMessage()));
+            plugin.messages().send(context.sender(), "statistic-api-error", Map.of("error", exception.getMessage()));
             plugin.logWarning("Statistic API rejected edit for " + statisticKey.displayName() + ": " + exception.getMessage());
-            return;
+            return true;
         }
 
         String messageKey = switch (action) {
@@ -239,9 +231,10 @@ public final class AdminCommand implements TabExecutor {
                 "old", formatStatisticValue(statisticKey, oldValue),
                 "new", formatStatisticValue(statisticKey, newValue)
         );
-        plugin.messages().send(sender, messageKey, placeholders);
-        plugin.logInfo(sender.getName() + " changed " + playerName + " statistic "
+        plugin.messages().send(context.sender(), messageKey, placeholders);
+        plugin.logInfo(context.sender().getName() + " changed " + playerName + " statistic "
                 + statisticKey.displayName() + " from " + oldValue + " to " + newValue + ".");
+        return true;
     }
 
     private OfflinePlayer resolveTarget(String name) {
@@ -319,18 +312,18 @@ public final class AdminCommand implements TabExecutor {
         };
     }
 
-    private boolean isEditAction(String argument) {
-        return switch (argument.toLowerCase(Locale.ROOT)) {
-            case "set", "setstatistic", "add", "addstatistic", "take", "takestatistic" -> true;
-            default -> false;
-        };
-    }
-
-    private boolean isViewAction(String argument) {
-        return switch (argument.toLowerCase(Locale.ROOT)) {
-            case "view", "viewstatistic" -> true;
-            default -> false;
-        };
+    private List<String> amountSuggestions(String statisticInput, String partial) {
+        List<String> suggestions;
+        try {
+            StatisticKey statisticKey = statisticParser.parse(statisticInput);
+            if (statisticKey.isTimePlayed()) {
+                suggestions = List.of("1s", "30s", "1m", "10m", "1h", "1d", "1w");
+                return filter(suggestions, partial);
+            }
+        } catch (StatisticParseException ignored) {
+        }
+        suggestions = List.of("0", "1", "10", "100", "1000");
+        return filter(suggestions, partial);
     }
 
     private List<String> statisticSuggestions(String input) {
@@ -406,17 +399,17 @@ public final class AdminCommand implements TabExecutor {
                 .toList();
     }
 
-    private enum EditAction {
-        SET,
-        ADD,
-        TAKE
-    }
-
     private String formatStatisticValue(StatisticKey statisticKey, int value) {
         if (!statisticKey.isTimePlayed()) {
             return String.valueOf(value);
         }
         return TickDuration.ofTicks(Math.max(0, value)).compact();
+    }
+
+    private enum EditAction {
+        SET,
+        ADD,
+        TAKE
     }
 
     private record AmountInput(int value, String display) {
