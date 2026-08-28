@@ -12,7 +12,6 @@ commands:
     description: FoStatistics admin command.
     usage: /fostatisticsadmin help
     aliases: [ statisticsadmin ]
-    permission: fostatistics.admin
 
 permissions:
   fostatistics.admin:

@@ -7,6 +7,9 @@ import me.foesio.core.logging.FoFileLogger;
 import me.foesio.core.message.FoMessageService;
 import me.foesio.core.reload.FoReloadRegistry;
 import me.foesio.core.reload.FoReloadResult;
+import me.foesio.core.sound.FoAdminSounds;
+import me.foesio.core.sound.FoEditorSounds;
+import me.foesio.core.sound.FoSoundService;
 import me.foesio.core.update.UpdateNoticeService;
 import me.foesio.foStatistics.command.AdminCommand;
 import me.foesio.foStatistics.editor.EditorGui;
@@ -27,6 +30,9 @@ public final class FoStatistics extends JavaPlugin {
     private EditorGui editorGui;
     private EditorInputService editorInputService;
     private FoCoreContext core;
+    private FoSoundService sounds;
+    private FoAdminSounds adminSounds;
+    private FoEditorSounds editorSounds;
 
     @Override
     public void onEnable() {
@@ -35,6 +41,9 @@ public final class FoStatistics extends JavaPlugin {
         this.settings = PluginSettings.from(getConfig());
         reloadCoreContext();
         this.messages = FoMessageService.load(this);
+        this.sounds = core.createSounds();
+        this.adminSounds = FoAdminSounds.create(sounds);
+        this.editorSounds = FoEditorSounds.create(sounds);
 
         this.fileLogger = FoFileLogger.create(this);
         this.fileLogger.configure(settings.fileLogging(), true);
@@ -42,8 +51,8 @@ public final class FoStatistics extends JavaPlugin {
         this.editorInputService = new EditorInputService(this);
         this.editorInputService.reload();
 
-        this.updateNotices = core.createUpdateNotices(messages, MODRINTH_PROJECT_ID).start();
-        this.editorGui = new EditorGui(this);
+        this.updateNotices = core.createUpdateNotices(messages, MODRINTH_PROJECT_ID, adminSounds).start();
+        this.editorGui = new EditorGui(this, editorSounds);
         this.editorGui.reload();
 
         registerAdminCommand();
@@ -95,6 +104,18 @@ public final class FoStatistics extends JavaPlugin {
         return core;
     }
 
+    public FoSoundService sounds() {
+        return sounds;
+    }
+
+    public FoAdminSounds adminSounds() {
+        return adminSounds;
+    }
+
+    public FoEditorSounds editorSounds() {
+        return editorSounds;
+    }
+
     public FoReloadResult reloadPluginFiles() {
         FoReloadResult result = reloadRegistry().reload();
         if (result.successful()) {
@@ -113,6 +134,7 @@ public final class FoStatistics extends JavaPlugin {
                     reloadCoreContext();
                 })
                 .addMessages(messages)
+                .add("sounds", sounds::reload)
                 .add("input", editorInputService::reload)
                 .add("editor", editorGui::reload)
                 .add("file logging", () -> fileLogger.configure(settings.fileLogging(), false));
@@ -150,6 +172,9 @@ public final class FoStatistics extends JavaPlugin {
         this.core = FoPluginCore.create(this);
         this.core.metrics(BSTATS_PLUGIN_ID);
         this.core.warnIfNativeDialogsUnavailable();
+        if (sounds != null) {
+            sounds.reload();
+        }
     }
 
     private void closeCoreContext() {

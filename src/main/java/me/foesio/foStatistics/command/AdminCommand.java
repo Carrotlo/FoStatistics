@@ -51,6 +51,7 @@ public final class AdminCommand {
                 .permission(FoStatistics.ADMIN_PERMISSION)
                 .reloads(reloadRegistry)
                 .updates(plugin.updateNotices())
+                .adminSounds(plugin.adminSounds())
                 .adminMessages(adminMessages)
                 .defaultExecutor(this::sendHelp)
                 .addSubcommand(helpSubcommand())
@@ -130,12 +131,14 @@ public final class AdminCommand {
         try {
             statisticKey = statisticParser.parse(args[1]);
         } catch (StatisticParseException exception) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "invalid-statistic", Map.of("reason", exception.getMessage()));
             return true;
         }
 
         OfflinePlayer target = resolveTarget(args[2]);
         if (target == null) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "unknown-player", Map.of("player", args[2]));
             return true;
         }
@@ -144,6 +147,7 @@ public final class AdminCommand {
         try {
             value = statisticKey.get(target);
         } catch (IllegalArgumentException exception) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "statistic-api-error", Map.of("error", exception.getMessage()));
             plugin.logWarning("Statistic API rejected view for " + statisticKey.displayName() + ": " + exception.getMessage());
             return true;
@@ -175,12 +179,14 @@ public final class AdminCommand {
         try {
             statisticKey = statisticParser.parse(args[1]);
         } catch (StatisticParseException exception) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "invalid-statistic", Map.of("reason", exception.getMessage()));
             return true;
         }
 
         OfflinePlayer target = resolveTarget(args[2]);
         if (target == null) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "unknown-player", Map.of("player", args[2]));
             return true;
         }
@@ -192,6 +198,7 @@ public final class AdminCommand {
 
         int maxAmount = plugin.settings().maxStatisticAmount();
         if (amount.value() > maxAmount) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "amount-too-large", Map.of(
                     "amount", amount.display(),
                     "max", String.valueOf(maxAmount)
@@ -206,12 +213,14 @@ public final class AdminCommand {
             newValue = calculateNewValue(action, oldValue, amount.value(), maxAmount);
             statisticKey.set(target, newValue);
         } catch (ArithmeticException exception) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "amount-too-large", Map.of(
                     "amount", amount.display(),
                     "max", String.valueOf(maxAmount)
             ));
             return true;
         } catch (IllegalArgumentException exception) {
+            playError(context.sender());
             plugin.messages().send(context.sender(), "statistic-api-error", Map.of("error", exception.getMessage()));
             plugin.logWarning("Statistic API rejected edit for " + statisticKey.displayName() + ": " + exception.getMessage());
             return true;
@@ -232,6 +241,9 @@ public final class AdminCommand {
                 "new", formatStatisticValue(statisticKey, newValue)
         );
         plugin.messages().send(context.sender(), messageKey, placeholders);
+        if (context.sender() instanceof Player player) {
+            plugin.sounds().play(player, "statistics.updated");
+        }
         plugin.logInfo(context.sender().getName() + " changed " + playerName + " statistic "
                 + statisticKey.displayName() + " from " + oldValue + " to " + newValue + ".");
         return true;
@@ -268,6 +280,7 @@ public final class AdminCommand {
 
         var parsed = LargeNumberParser.parse(input);
         if (parsed.isEmpty() || parsed.get().signum() < 0 || parsed.get().compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) > 0) {
+            playError(sender);
             plugin.messages().send(sender, "invalid-amount");
             return null;
         }
@@ -276,6 +289,7 @@ public final class AdminCommand {
             int amount = parsed.get().intValueExact();
             return new AmountInput(amount, String.valueOf(amount));
         } catch (ArithmeticException exception) {
+            playError(sender);
             plugin.messages().send(sender, "invalid-amount");
             return null;
         }
@@ -284,6 +298,7 @@ public final class AdminCommand {
     private AmountInput parseTimePlayedAmount(String input, CommandSender sender) {
         var parsed = DurationParser.parse(input);
         if (parsed.isEmpty()) {
+            playError(sender);
             plugin.messages().send(sender, "invalid-amount");
             return null;
         }
@@ -293,9 +308,14 @@ public final class AdminCommand {
             int amount = duration.intTicksExact();
             return new AmountInput(amount, duration.compact());
         } catch (ArithmeticException exception) {
+            playError(sender);
             plugin.messages().send(sender, "invalid-amount");
             return null;
         }
+    }
+
+    private void playError(CommandSender sender) {
+        plugin.adminSounds().updateError(sender);
     }
 
     private int calculateNewValue(EditAction action, int oldValue, int amount, int maxAmount) {

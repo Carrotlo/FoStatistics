@@ -6,6 +6,7 @@ import me.foesio.core.editor.ConfigEditorValueType;
 import me.foesio.core.editor.EditorMenuHolder;
 import me.foesio.core.editor.EditorSaveResult;
 import me.foesio.core.reload.FoReloadResult;
+import me.foesio.core.sound.FoEditorSounds;
 import me.foesio.foStatistics.FoStatistics;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -35,9 +36,11 @@ public final class EditorGui implements Listener {
 
     private final FoStatistics plugin;
     private ConfigEditorMenu editor;
+    private final FoEditorSounds sounds;
 
-    public EditorGui(FoStatistics plugin) {
+    public EditorGui(FoStatistics plugin, FoEditorSounds sounds) {
         this.plugin = plugin;
+        this.sounds = sounds;
     }
 
     public void reload() {
@@ -45,12 +48,19 @@ public final class EditorGui implements Listener {
     }
 
     public void open(Player player) {
+        open(player, true);
+    }
+
+    private void open(Player player, boolean playSound) {
         if (!player.hasPermission(FoStatistics.ADMIN_PERMISSION)) {
             plugin.messages().send(player, "no-permission");
             return;
         }
 
         editor().open(player);
+        if (playSound) {
+            sounds.open(player);
+        }
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -93,8 +103,9 @@ public final class EditorGui implements Listener {
                 String.valueOf(button.integerValue()),
                 value -> handleIntegerInput(player, button, value),
                 () -> {
+                    sounds.back(player);
                     plugin.messages().send(player, "editor-prompt-cancelled");
-                    open(player);
+                    open(player, false);
                 }
         );
     }
@@ -102,8 +113,9 @@ public final class EditorGui implements Listener {
     private void handleIntegerInput(Player player, ConfigEditorButton button, String message) {
         OptionalInt parsed = editor().parseInteger(message, 0, Integer.MAX_VALUE);
         if (parsed.isEmpty()) {
+            sounds.error(player);
             plugin.messages().send(player, "invalid-amount");
-            open(player);
+            open(player, false);
             return;
         }
 
@@ -113,13 +125,19 @@ public final class EditorGui implements Listener {
 
     private void save(Player player, ConfigEditorButton button, EditorSaveResult result, String value) {
         if (result.successful()) {
+            if (button.type() == ConfigEditorValueType.BOOLEAN) {
+                sounds.toggle(player, editor().displayValue(button).toLowerCase().contains("enabled"));
+            } else {
+                sounds.save(player);
+            }
             plugin.messages().send(player, "editor-setting-saved", Map.of("setting", button.label(), "value", value));
             plugin.logInfo(player.getName() + " changed editor setting " + button.configPath() + " to " + value + ".");
         } else {
+            sounds.error(player);
             plugin.messages().send(player, "editor-setting-failed", Map.of("setting", button.label()));
             plugin.logWarning("Failed saving editor setting " + button.configPath() + ": " + result.errorMessage());
         }
-        open(player);
+        open(player, false);
     }
 
     private ConfigEditorMenu editor() {

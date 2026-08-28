@@ -35,15 +35,20 @@ public final class EditorInputService {
         if (!support.canUseNativeDialogs()) {
             warnFallback(player, support);
         }
-        plugin.core().scheduler().runLaterForPlayer(player, () -> EditorDialogInputs.openTextFromInventory(
-                plugin,
-                plugin.core().inventoryCloseSuppressor(),
-                plugin.core().dialogService(),
-                player,
-                request,
-                onSubmit,
-                onCancel
-        ), 1L);
+        plugin.core().scheduler().runLaterForPlayer(player, () -> {
+            boolean opened = EditorDialogInputs.openTextFromInventory(
+                    plugin,
+                    plugin.core().inventoryCloseSuppressor(),
+                    plugin.core().dialogService(),
+                    player,
+                    request,
+                    onSubmit,
+                    onCancel
+            );
+            if (opened) {
+                plugin.editorSounds().open(player);
+            }
+        }, 1L);
     }
 
     private TextDialogRequest editorNumberRequest(String currentValue) {
