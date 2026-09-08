@@ -32,7 +32,7 @@ public final class EditorInputService {
     public void openNumberInput(Player player, String currentValue, Consumer<String> onSubmit, Runnable onCancel) {
         TextDialogRequest request = editorNumberRequest(currentValue);
         NativeDialogSupport support = plugin.core().nativeDialogs();
-        if (!support.canUseNativeDialogs()) {
+        if (!support.canUseNativeDialogs(player)) {
             warnFallback(player, support);
         }
         plugin.core().scheduler().runLaterForPlayer(player, () -> {
@@ -61,12 +61,12 @@ public final class EditorInputService {
 
     private void warnFallback(Player player, NativeDialogSupport support) {
         if (!support.configEnabled()
-                || support.canUseNativeDialogs()
+                || support.canUseNativeDialogs(player)
                 || !support.warnOnFallback()
                 || !warnedPlayers.add(player.getUniqueId())) {
             return;
         }
-        plugin.messages().send(player, "native-dialog-fallback", Map.of("reason", support.availability().reason()));
+        plugin.messages().send(player, "native-dialog-fallback", Map.of("reason", support.unavailableReason(player)));
     }
 
     private String render(String template) {

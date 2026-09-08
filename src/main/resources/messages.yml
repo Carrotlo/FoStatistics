@@ -1,5 +1,7 @@
+# Edit optional item icons here. Remove any :icon: token to hide it.
+# Unsupported servers, older Java clients, and Bedrock players automatically receive clean text without item sprites.
 tokens:
-  prefix: "{theme}FoStatistics &8» {muted}"
+  prefix: ":map: {theme}FoStatistics &8» {muted}"
   theme: "#03fc88"
   muted: "#a7b8b0"
   white: "#ffffff"
@@ -22,8 +24,8 @@ help:
   - "{prefix}{muted}Typed stats: {theme}mine_block:stone{muted}, {theme}kill_entity:zombie{muted}."
   - "{prefix}{muted}Time stat: {theme}time_played{muted}. Use seconds or {theme}s/m/h/d/w{muted}."
 
-reload-success: "{prefix}{good}Reloaded config, messages, editor, and logging."
-reload-failed: "{prefix}{bad}Reload failed. {muted}{error}"
+reload-success: "{prefix}:emerald: {good}Reloaded config, messages, editor, and logging."
+reload-failed: "{prefix}:redstone: {bad}Reload failed. {muted}{error}"
 native-dialog-fallback: "{prefix}{bad}Native dialogs unavailable. {muted}Using chat input. {reason}"
 
 statistic-usage: "{prefix}{bad}Usage: {muted}/{label} {action} <statistic> <player> <amount>"
@@ -34,10 +36,10 @@ amount-too-large: "{prefix}{bad}Amount too large. {muted}Max: {theme}{max}{muted
 unknown-player: "{prefix}{bad}Unknown player: {theme}{player}{muted}."
 statistic-api-error: "{prefix}{bad}Statistic edit failed. {muted}{error}"
 statistic-view: "{prefix}{theme}{player}{muted}'s {theme}{statistic}{muted}: {theme}{value}{muted}."
-statistic-set: "{prefix}{good}Set {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
-statistic-added: "{prefix}{good}Added {theme}{amount}{muted} to {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
-statistic-taken: "{prefix}{good}Took {theme}{amount}{muted} from {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
+statistic-set: "{prefix}:emerald: {good}Set {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
+statistic-added: "{prefix}:emerald: {good}Added {theme}{amount}{muted} to {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
+statistic-taken: "{prefix}:lava_bucket: {good}Took {theme}{amount}{muted} from {theme}{statistic}{muted} for {theme}{player}{muted}: {theme}{old}{muted} -> {theme}{new}{muted}."
 
-editor-setting-saved: "{prefix}{good}Saved {theme}{setting}{muted}: {theme}{value}{muted}."
-editor-setting-failed: "{prefix}{bad}Could not save {theme}{setting}{muted}."
+editor-setting-saved: "{prefix}:emerald: {good}Saved {theme}{setting}{muted}: {theme}{value}{muted}."
+editor-setting-failed: "{prefix}:redstone: {bad}Could not save {theme}{setting}{muted}."
 editor-prompt-cancelled: "{prefix}{muted}Prompt cancelled."

@@ -57,7 +57,7 @@ public final class EditorGui implements Listener {
             return;
         }
 
-        editor().open(player);
+        player.openInventory(editor().open(player));
         if (playSound) {
             sounds.open(player);
         }

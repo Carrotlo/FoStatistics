@@ -41,6 +41,7 @@ public final class FoStatistics extends JavaPlugin {
         this.settings = PluginSettings.from(getConfig());
         reloadCoreContext();
         this.messages = FoMessageService.load(this);
+        migrateSprites();
         this.sounds = core.createSounds();
         this.adminSounds = FoAdminSounds.create(sounds);
         this.editorSounds = FoEditorSounds.create(sounds);
@@ -175,6 +176,31 @@ public final class FoStatistics extends JavaPlugin {
         if (sounds != null) {
             sounds.reload();
         }
+    }
+
+    private void migrateSprites() {
+        messages.migrateToVersion(core.migrations(), 1, config -> {
+            boolean changed = false;
+            changed |= FoMessageService.addMissingToken(config, "tokens.prefix", ":map:", null);
+            changed |= FoMessageService.addMissingToken(config, "reload-success", ":emerald:");
+            changed |= FoMessageService.addMissingToken(config, "reload-failed", ":redstone:");
+            changed |= FoMessageService.addMissingToken(config, "statistic-view", ":map:");
+            changed |= FoMessageService.addMissingToken(config, "statistic-set", ":emerald:");
+            changed |= FoMessageService.addMissingToken(config, "statistic-added", ":emerald:");
+            changed |= FoMessageService.addMissingToken(config, "statistic-taken", ":lava_bucket:");
+            changed |= FoMessageService.addMissingToken(config, "editor-setting-saved", ":emerald:");
+            changed |= FoMessageService.addMissingToken(config, "editor-setting-failed", ":redstone:");
+            return changed;
+        });
+        messages.migrateToVersion(core.migrations(), 2, config -> {
+            String oldDefault = "{prefix}:map: {theme}{player}{muted}'s {theme}{statistic}{muted}: {theme}{value}{muted}.";
+            String newDefault = "{prefix}{theme}{player}{muted}'s {theme}{statistic}{muted}: {theme}{value}{muted}.";
+            if (!oldDefault.equals(config.getString("statistic-view"))) {
+                return false;
+            }
+            config.set("statistic-view", newDefault);
+            return true;
+        });
     }
 
     private void closeCoreContext() {
