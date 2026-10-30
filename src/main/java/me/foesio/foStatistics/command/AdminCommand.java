@@ -11,6 +11,9 @@ import me.foesio.core.number.LargeNumberParser;
 import me.foesio.core.number.TickDuration;
 import me.foesio.core.reload.FoReloadRegistry;
 import me.foesio.foStatistics.FoStatistics;
+import me.foesio.foStatistics.api.StatisticEditAction;
+import me.foesio.foStatistics.api.StatisticEditResult;
+import me.foesio.foStatistics.api.StatisticTarget;
 import me.foesio.foStatistics.statistic.StatisticKey;
 import me.foesio.foStatistics.statistic.StatisticParseException;
 import me.foesio.foStatistics.statistic.StatisticParser;
@@ -57,9 +60,9 @@ public final class AdminCommand {
                 .addSubcommand(helpSubcommand())
                 .addSubcommand(editorSubcommand())
                 .addSubcommand(viewSubcommand())
-                .addSubcommand(editSubcommand("set", EditAction.SET, "setstatistic"))
-                .addSubcommand(editSubcommand("add", EditAction.ADD, "addstatistic"))
-                .addSubcommand(editSubcommand("take", EditAction.TAKE, "takestatistic"))
+                .addSubcommand(editSubcommand("set", StatisticEditAction.SET, "setstatistic"))
+                .addSubcommand(editSubcommand("add", StatisticEditAction.ADD, "addstatistic"))
+                .addSubcommand(editSubcommand("take", StatisticEditAction.TAKE, "takestatistic"))
                 .build()
                 .register();
     }
@@ -101,7 +104,7 @@ public final class AdminCommand {
                 .build();
     }
 
-    private FoAdminSubcommand editSubcommand(String name, EditAction action, String alias) {
+    private FoAdminSubcommand editSubcommand(String name, StatisticEditAction action, String alias) {
         return FoAdminSubcommand.builder(name, context -> editStatistic(context, action))
                 .aliases(alias)
                 .usage(name + " <statistic> <player> <amount>")
@@ -165,7 +168,7 @@ public final class AdminCommand {
         return true;
     }
 
-    private boolean editStatistic(FoAdminCommandContext context, EditAction action) {
+    private boolean editStatistic(FoAdminCommandContext context, StatisticEditAction action) {
         String[] args = context.args();
         if (args.length != 4) {
             plugin.messages().send(context.sender(), "statistic-usage", Map.of(
@@ -196,33 +199,12 @@ public final class AdminCommand {
             return true;
         }
 
-        int maxAmount = plugin.settings().maxStatisticAmount();
-        if (amount.value() > maxAmount) {
-            playError(context.sender());
-            plugin.messages().send(context.sender(), "amount-too-large", Map.of(
-                    "amount", amount.display(),
-                    "max", String.valueOf(maxAmount)
-            ));
-            return true;
-        }
-
-        int oldValue;
-        int newValue;
-        try {
-            oldValue = statisticKey.get(target);
-            newValue = calculateNewValue(action, oldValue, amount.value(), maxAmount);
-            statisticKey.set(target, newValue);
-        } catch (ArithmeticException exception) {
-            playError(context.sender());
-            plugin.messages().send(context.sender(), "amount-too-large", Map.of(
-                    "amount", amount.display(),
-                    "max", String.valueOf(maxAmount)
-            ));
-            return true;
-        } catch (IllegalArgumentException exception) {
-            playError(context.sender());
-            plugin.messages().send(context.sender(), "statistic-api-error", Map.of("error", exception.getMessage()));
-            plugin.logWarning("Statistic API rejected edit for " + statisticKey.displayName() + ": " + exception.getMessage());
+        StatisticTarget statisticTarget = new StatisticTarget(statisticKey.statistic(),
+                statisticKey.material(), statisticKey.entityType());
+        StatisticEditResult result = plugin.statisticEditService().editFromCommand(
+                context.sender(), target, statisticTarget, action, amount.value());
+        if (!result.successful()) {
+            sendEditFailure(context.sender(), args[2], amount, statisticKey, result);
             return true;
         }
 
@@ -237,16 +219,34 @@ public final class AdminCommand {
                 "statistic", statisticKey.displayName(),
                 "player", playerName,
                 "amount", amount.display(),
-                "old", formatStatisticValue(statisticKey, oldValue),
-                "new", formatStatisticValue(statisticKey, newValue)
+                "old", formatStatisticValue(statisticKey, result.previousValue()),
+                "new", formatStatisticValue(statisticKey, result.currentValue())
         );
         plugin.messages().send(context.sender(), messageKey, placeholders);
         if (context.sender() instanceof Player player) {
             plugin.sounds().play(player, "statistics.updated");
         }
         plugin.logInfo(context.sender().getName() + " changed " + playerName + " statistic "
-                + statisticKey.displayName() + " from " + oldValue + " to " + newValue + ".");
+                + statisticKey.displayName() + " from " + result.previousValue() + " to " + result.currentValue() + ".");
         return true;
+    }
+
+    private void sendEditFailure(CommandSender sender, String playerName, AmountInput amount,
+                                 StatisticKey statisticKey, StatisticEditResult result) {
+        playError(sender);
+        switch (result.status()) {
+            case AMOUNT_TOO_LARGE -> plugin.messages().send(sender, "amount-too-large", Map.of(
+                    "amount", amount.display(),
+                    "max", String.valueOf(plugin.settings().maxStatisticAmount())));
+            case INVALID_AMOUNT -> plugin.messages().send(sender, "invalid-amount");
+            case OFFLINE_NOT_ALLOWED, UNKNOWN_PLAYER -> plugin.messages().send(sender, "unknown-player",
+                    Map.of("player", playerName));
+            default -> {
+                String reason = result.errorMessage() == null ? result.status().name() : result.errorMessage();
+                plugin.messages().send(sender, "statistic-api-error", Map.of("error", reason));
+                plugin.logWarning("Statistic API rejected edit for " + statisticKey.displayName() + ": " + reason);
+            }
+        }
     }
 
     private OfflinePlayer resolveTarget(String name) {
@@ -316,20 +316,6 @@ public final class AdminCommand {
 
     private void playError(CommandSender sender) {
         plugin.adminSounds().updateError(sender);
-    }
-
-    private int calculateNewValue(EditAction action, int oldValue, int amount, int maxAmount) {
-        return switch (action) {
-            case SET -> amount;
-            case ADD -> {
-                long result = (long) oldValue + amount;
-                if (result > maxAmount || result > Integer.MAX_VALUE) {
-                    throw new ArithmeticException("Statistic value too large.");
-                }
-                yield (int) result;
-            }
-            case TAKE -> Math.max(0, oldValue - amount);
-        };
     }
 
     private List<String> amountSuggestions(String statisticInput, String partial) {
@@ -424,12 +410,6 @@ public final class AdminCommand {
             return String.valueOf(value);
         }
         return TickDuration.ofTicks(Math.max(0, value)).compact();
-    }
-
-    private enum EditAction {
-        SET,
-        ADD,
-        TAKE
     }
 
     private record AmountInput(int value, String display) {

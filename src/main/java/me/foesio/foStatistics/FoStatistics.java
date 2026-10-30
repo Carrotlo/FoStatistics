@@ -11,9 +11,12 @@ import me.foesio.core.sound.FoAdminSounds;
 import me.foesio.core.sound.FoEditorSounds;
 import me.foesio.core.sound.FoSoundService;
 import me.foesio.core.update.UpdateNoticeService;
+import me.foesio.foStatistics.api.FoStatisticsService;
 import me.foesio.foStatistics.command.AdminCommand;
 import me.foesio.foStatistics.editor.EditorGui;
 import me.foesio.foStatistics.input.EditorInputService;
+import me.foesio.foStatistics.statistic.DefaultFoStatisticsService;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Level;
@@ -33,6 +36,7 @@ public final class FoStatistics extends JavaPlugin {
     private FoSoundService sounds;
     private FoAdminSounds adminSounds;
     private FoEditorSounds editorSounds;
+    private DefaultFoStatisticsService statisticEditService;
 
     @Override
     public void onEnable() {
@@ -55,15 +59,21 @@ public final class FoStatistics extends JavaPlugin {
         this.updateNotices = core.createUpdateNotices(messages, MODRINTH_PROJECT_ID, adminSounds).start();
         this.editorGui = new EditorGui(this, editorSounds);
         this.editorGui.reload();
+        this.statisticEditService = new DefaultFoStatisticsService(this);
 
         registerAdminCommand();
         registerListeners();
+        getServer().getServicesManager().register(FoStatisticsService.class, statisticEditService, this, ServicePriority.Normal);
 
         logInfo("Enabled version " + getPluginMeta().getVersion() + ".");
     }
 
     @Override
     public void onDisable() {
+        if (statisticEditService != null) {
+            statisticEditService.deactivate();
+            getServer().getServicesManager().unregister(FoStatisticsService.class, statisticEditService);
+        }
         logInfo("Disabled.");
         if (fileLogger != null) {
             fileLogger.shutdown();
@@ -115,6 +125,10 @@ public final class FoStatistics extends JavaPlugin {
 
     public FoEditorSounds editorSounds() {
         return editorSounds;
+    }
+
+    public DefaultFoStatisticsService statisticEditService() {
+        return statisticEditService;
     }
 
     public FoReloadResult reloadPluginFiles() {
