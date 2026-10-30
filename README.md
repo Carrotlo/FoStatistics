@@ -110,4 +110,20 @@ public void onStatisticEdited(FoStatisticEditedEvent event) {
 }
 ```
 
+### Complete public API method index
+
+Signatures use short type names; import Fo types from this plugin's `api` package and Bukkit types from Bukkit.
+
+#### `FoStatisticsService`
+
+```java
+StatisticEditResult edit(Plugin, OfflinePlayer, StatisticTarget, StatisticEditAction, int);
+```
+
+**Other public contract types:** `StatisticEditAction`, `StatisticEditResult`, `StatisticTarget`.
+
+### Complete Bukkit event index
+
+- `FoStatisticEditedEvent`.
+
 </details>
