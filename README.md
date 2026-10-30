@@ -67,63 +67,41 @@ Main config areas: `statistics`, `file-logging`.
 <details>
 <summary><strong>Developer API</strong></summary>
 
-FoStatistics registers `FoStatisticsService` with Bukkit's `ServicesManager` after startup. It accepts synchronous `SET`, `ADD`, and `TAKE` edits under the same amount and offline-player rules as the admin command. An API caller must be an enabled plugin. The amount is a non-negative raw statistic value; `PLAY_ONE_MINUTE` uses ticks. A returned `CHANGED` means Bukkit accepted the new value, while `UNCHANGED` means no setter or event was used. Other result statuses explain rejected requests. Bukkit controls when player statistics reach disk.
-
-Build this project with `mvn clean package`, install `target/FoStatistics-1.7.jar` in your local Maven repository if needed, and compile your consumer against it as `provided` (Gradle: `compileOnly`). Do not shade FoStatistics into the consumer. The Maven coordinates for a locally installed jar are `me.foesio:FoStatistics:1.7`; this does not imply a published Maven repository. The server must run a FoStatistics jar containing this API, even if an older jar has the same version number.
-
-```sh
-mvn install:install-file -Dfile=target/FoStatistics-1.7.jar -DgroupId=me.foesio -DartifactId=FoStatistics -Dversion=1.7 -Dpackaging=jar
-```
+Compile against the matching jar (`provided` in Maven, `compileOnly` in Gradle); install it locally if needed. Declare `FoStatistics` in your plugin metadata (`softdepend` for an optional integration).
 
 ```xml
 <dependency>
-    <groupId>me.foesio</groupId>
-    <artifactId>FoStatistics</artifactId>
-    <version>1.7</version>
-    <scope>provided</scope>
+  <groupId>me.foesio</groupId>
+  <artifactId>FoStatistics</artifactId>
+  <version>1.7</version>
+  <scope>provided</scope>
 </dependency>
 ```
 
-Add `depend: [FoStatistics]` to your `plugin.yml`, or `softdepend: [FoStatistics]` if the integration is optional. For an optional integration, load code that references FoStatistics classes only after checking that FoStatistics is enabled. Reacquire the service after a provider reload; do not keep and use a disabled provider instance.
-
 ```java
-FoStatisticsService service = Bukkit.getServicesManager().load(FoStatisticsService.class);
-if (service != null) {
-    StatisticEditResult result = service.edit(this, player,
-            StatisticTarget.of(Statistic.JUMP), StatisticEditAction.ADD, 1);
-    if (result.status() == StatisticEditResult.Status.CHANGED) {
-        // The Bukkit statistic was changed.
-    }
-}
-```
+import me.foesio.foStatistics.api.FoStatisticsService;
+import me.foesio.foStatistics.api.StatisticTarget;
+import me.foesio.foStatistics.api.StatisticEditAction;
+import org.bukkit.Statistic;
+import me.foesio.foStatistics.api.event.FoStatisticEditedEvent;
 
-`FoStatisticEditedEvent` fires synchronously after a value-changing FoStatistics command or service edit. It is not cancellable. It contains the player's UUID, typed statistic target, action, previous/new values, origin (`COMMAND` or `API`), and source name. `getActorId()` is the admin player's UUID for player commands and is null for console or API calls. Failed and unchanged edits fire no event. Direct Bukkit writes and ordinary gameplay changes are outside this event's scope; use Bukkit's statistic event where appropriate. Listeners run in the same primary-thread call and may inspect Bukkit player state. The service returns `WRONG_THREAD` for calls made off the primary thread; schedule those calls on the server thread. This plugin does not declare Folia support.
+FoStatisticsService api = Bukkit.getServicesManager().load(FoStatisticsService.class);
+if (api != null) api.edit(this, player, StatisticTarget.of(Statistic.JUMP), StatisticEditAction.ADD, 1);
 
-Register the listener through Bukkit's plugin manager during your plugin's enable step.
-
-```java
 @EventHandler
-public void onStatisticEdited(FoStatisticEditedEvent event) {
-    UUID playerId = event.getPlayerId();
-    int newValue = event.getNewValue();
-    // Refresh your own progress for playerId.
+public void onFoStatisticEditedEvent(FoStatisticEditedEvent event) {
+    Bukkit.getLogger().info(event.getClass().getSimpleName());
 }
 ```
 
-### Complete public API method index
+**API methods** (overloads grouped):
 
-Signatures use short type names; import Fo types from this plugin's `api` package and Bukkit types from Bukkit.
+- `FoStatisticsService`: `edit`.
 
-#### `FoStatisticsService`
+**Other API types:** `StatisticEditAction`, `StatisticEditResult`, `StatisticTarget`.
 
-```java
-StatisticEditResult edit(Plugin, OfflinePlayer, StatisticTarget, StatisticEditAction, int);
-```
+**Events:** `FoStatisticEditedEvent`.
 
-**Other public contract types:** `StatisticEditAction`, `StatisticEditResult`, `StatisticTarget`.
-
-### Complete Bukkit event index
-
-- `FoStatisticEditedEvent`.
+[Browse API source](src/main/java/me/foesio/foStatistics/api) for signatures and event details.
 
 </details>
